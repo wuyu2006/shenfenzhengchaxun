@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>身份证归属地查询</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6',
+                        secondary: '#64748b',
+                        success: '#10b981',
+                        warning: '#f59e0b',
+                        error: '#ef4444',
+                        neutral: '#64748b',
+                        'neutral-light': '#f1f5f9',
+                        'neutral-dark': '#334155'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif']
+                    },
+                    boxShadow: {
+                        'card': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                        'card-hover': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .glass-effect {
+                background: rgba(255, 255, 255, 0.25);
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.18);
+            }
+            
+            .input-focus {
+                @apply focus:ring-2 focus:ring-primary focus:border-primary focus:outline-none;
+            }
+            
+            .btn-hover {
+                @apply hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-300;
+            }
+            
+            .card-hover {
+                @apply hover:shadow-card-hover transform hover:-translate-y-1 transition-all duration-300;
+            }
+        }
+    </style>
+    <style>
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .result-card {
+            transition: all 0.3s ease;
+        }
+        
+        .result-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .search-animation {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+            }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .slide-in {
+            animation: slideIn 0.5s ease-in-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+    </style>
+</head>
+<body class="font-sans text-gray-800">
+    <div class="min-h-screen flex flex-col">
+        <!-- 导航栏 -->
+        <nav class="gradient-bg text-white shadow-md">
+            <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+                <div class="flex items-center space-x-2">
+                    <i class="fa fa-id-card text-2xl"></i>
+                    <h1 class="text-xl md:text-2xl font-bold">身份证归属地查询</h1>
+                </div>
+
+
+            </div>
+        </nav>
+
+        <!-- 主要内容 -->
+        <main class="flex-grow container mx-auto px-4 py-8 md:py-16">
+            <div class="max-w-4xl mx-auto">
+                <!-- 查询卡片（优化：输入框与按钮水平对齐） -->
+                <div class="bg-white rounded-xl shadow-card p-6 md:p-8 mb-8 glass-effect">
+                    <div class="text-center mb-6">
+                        <h2 class="text-2xl md:text-3xl font-bold text-gray-800 mb-2">身份证归属地查询</h2>
+                        <p class="text-neutral">输入身份证号码前4位或前6位，查询对应的地区信息</p>
+                    </div>
+                    
+                    <form id="searchForm" class="mb-6">
+                        <!-- 核心优化：添加 items-center 实现垂直居中，调整间距和对齐方式 -->
+                        <div class="flex flex-col md:flex-row gap-3 items-center">
+                            <div class="flex-grow">
+                                <label for="idCardInput" class="block text-sm font-medium text-gray-700 mb-1">身份证号码前缀</label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                                        <i class="fa fa-search"></i>
+                                    </span>
+                                    <input 
+                                        type="text" 
+                                        id="idCardInput" 
+                                        class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg input-focus"
+                                        placeholder="请输入身份证前4位或前6位数字" 
+                                        maxlength="6"
+                                        pattern="\d{4,6}"
+                                        required
+                                    >
+                                </div>
+                                <p id="inputHint" class="mt-1 text-xs text-neutral">支持输入前4位或前6位数字</p>
+                                <p id="dataLoadHint" class="mt-1 text-xs text-warning hidden">数据加载中，请稍后再查询...</p>
+                                <p id="dataLoadError" class="mt-1 text-xs text-error hidden">数据加载失败，请刷新页面重试</p>
+                            </div>
+                            <div class="md:mt-0 mt-2">
+                                <!-- 优化：固定按钮高度与输入框一致，保持视觉对齐 -->
+                                <button 
+                                    type="submit" 
+                                    id="searchBtn"
+                                    class="w-full md:w-auto bg-primary hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-lg btn-hover flex items-center justify-center h-[45px]"
+                                    disabled
+                                >
+                                    <i class="fa fa-search mr-2"></i> 查询
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                    
+                    <div class="bg-neutral-light rounded-lg p-4">
+                        <h3 class="font-medium text-gray-800 mb-2 flex items-center">
+                            <i class="fa fa-lightbulb-o text-warning mr-2"></i> 使用说明
+                        </h3>
+                        <ul class="text-sm text-neutral space-y-1 list-disc list-inside">
+                            <li>支持输入身份证号码前4位或前6位数字</li>
+                            <li>输入前4位时，将显示所有匹配的地区列表</li>
+                            <li>输入前6位时，将显示具体的地区信息</li>
+                            <li>查询结果仅供参考，具体以官方数据为准</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <!-- 结果区域 -->
+                <div id="resultArea" class="hidden">
+                    <!-- 加载状态 -->
+                    <div id="loadingState" class="hidden text-center py-8">
+                        <div class="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+                        <p class="mt-4 text-neutral">正在查询中，请稍候...</p>
+                    </div>
+                    
+                    <!-- 无结果状态 -->
+                    <div id="noResultState" class="hidden text-center py-8">
+                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 text-error mb-4">
+                            <i class="fa fa-exclamation-triangle text-2xl"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold text-gray-800 mb-2">未找到匹配结果</h3>
+                        <p class="text-neutral">请检查输入的身份证号码前缀是否正确</p>
+                    </div>
+                    
+                    <!-- 单一结果 -->
+                    <div id="singleResult" class="hidden">
+                        <div class="bg-white rounded-xl shadow-card p-6 mb-6 result-card fade-in">
+                            <div class="flex items-start">
+                                <div class="bg-primary bg-opacity-10 rounded-full p-3 mr-4">
+                                    <i class="fa fa-map-marker text-primary text-xl"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-xl font-bold text-gray-800 mb-2">查询结果</h3>
+                                    <div class="space-y-3">
+                                        <div class="flex items-center">
+                                            <span class="text-neutral w-24">身份证前缀：</span>
+                                            <span id="resultPrefix" class="font-medium text-gray-800"></span>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <span class="text-neutral w-24">地区：</span>
+                                            <span id="resultRegion" class="font-medium text-gray-800"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 多个结果 -->
+                    <div id="multipleResults" class="hidden">
+                        <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                            <i class="fa fa-list-ul text-primary mr-2"></i>
+                            查询结果列表
+                        </h3>
+                        <div id="resultsList" class="space-y-4">
+                            <!-- 结果列表将通过JavaScript动态生成 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- 页脚 -->
+        <footer class="bg-gray-800 text-white py-8">
+            <div class="container mx-auto px-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div>
+                        <h3 class="text-lg font-semibold mb-4">关于本工具</h3>
+                        <p class="text-gray-400 text-sm">身份证归属地查询工具可以帮助您快速查询身份证号码前缀对应的地区信息，支持前4位和前6位查询。</p>
+                    </div>
+                    <div id="about">
+                        <h3 class="text-lg font-semibold mb-4">使用指南</h3>
+                        <ul class="text-gray-400 text-sm space-y-2">
+                            <li class="flex items-start">
+                                <i class="fa fa-check-circle text-success mt-1 mr-2"></i>
+                                <span>输入身份证号码前4位或前6位数字</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fa fa-check-circle text-success mt-1 mr-2"></i>
+                                <span>点击查询按钮获取结果</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fa fa-check-circle text-success mt-1 mr-2"></i>
+                                <span>查看查询结果和详细信息</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div id="contact">
+                        <h3 class="text-lg font-semibold mb-4">联系网站管理员</h3>
+                        <ul class="text-gray-400 text-sm space-y-2">
+                            <li class="flex items-center">
+                                <i class="fa fa-envelope mr-2"></i>
+                                <span>WY770572303@outlook.com</span>
+                            </li>
+                            <li class="flex items-center">
+                                <i class="fa fa-phone mr-2"></i>
+                                <span>198-7685-3421</span> 
+                            </li>
+                        </ul>
+                        <div class="flex space-x-6 mt-4">
+                            <button id="wechatBtn" class="text-gray-400 hover:text-white transition-all duration-300 transform hover:scale-110 hover:shadow-lg">
+                                <i class="fa fa-weixin text-2xl"></i>
+                            </button>
+                            <button id="qqBtn" class="text-gray-400 hover:text-white transition-all duration-300 transform hover:scale-110 hover:shadow-lg">
+                                <i class="fa fa-qq text-2xl"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="border-t border-gray-700 mt-8 pt-6 text-center text-gray-400 text-sm">
+                    <p>&copy; 2025 身份证归属地查询工具. 保留所有权利.</p>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- 图片查看弹窗 -->
+    <div id="imageModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center hidden">
+        <div class="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full mx-4 transform transition-all duration-300 scale-95 opacity-0" id="modalContent">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="modalTitle" class="text-lg font-semibold text-gray-800"></h3>
+                <button id="closeModal" class="text-gray-500 hover:text-gray-700 transition-colors duration-300">
+                    <i class="fa fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="flex justify-center">
+                <img id="modalImage" src="" alt="" class="max-w-full h-auto rounded-lg shadow-lg">
+            </div>
+            <div class="mt-4 text-center text-sm text-gray-600">
+                <p id="modalDescription"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局数据存储
+        let areaData = {}; // 存储解析后的 6位代码:地区 键值对
+        let prefixIndex = {}; // 存储4位前缀索引，提高查询效率
+
+        // DOM元素
+        const searchForm = document.getElementById('searchForm');
+        const idCardInput = document.getElementById('idCardInput');
+        const inputHint = document.getElementById('inputHint');
+        const dataLoadHint = document.getElementById('dataLoadHint');
+        const dataLoadError = document.getElementById('dataLoadError');
+        const searchBtn = document.getElementById('searchBtn');
+        const resultArea = document.getElementById('resultArea');
+        const loadingState = document.getElementById('loadingState');
+        const noResultState = document.getElementById('noResultState');
+        const singleResult = document.getElementById('singleResult');
+        const multipleResults = document.getElementById('multipleResults');
+        const resultsList = document.getElementById('resultsList');
+        const resultPrefix = document.getElementById('resultPrefix');
+        const resultRegion = document.getElementById('resultRegion');
+
+        /**
+         * 异步加载外部 shuju.txt 数据文件
+         */
+        async function loadAreaDataFromFile() {
+            try {
+                // 显示数据加载提示，禁用查询按钮
+                dataLoadHint.classList.remove('hidden');
+                searchBtn.disabled = true;
+                searchBtn.classList.add('bg-gray-400');
+                searchBtn.classList.remove('bg-primary', 'hover:bg-blue-600');
+
+                // 使用 fetch API 请求外部 shuju.txt 文件（需与HTML文件同目录）
+                const response = await fetch('shuju.txt');
+                
+                // 检查请求是否成功
+                if (!response.ok) {
+                    throw new Error(`请求失败，状态码：${response.status}`);
+                }
+
+                // 读取文件文本内容
+                const areaDataText = await response.text();
+
+                // 解析文本数据为 areaData 对象（格式：110100=北京市市辖区）
+                parseAreaData(areaDataText);
+
+                // 构建4位前缀索引，提高查询效率
+                buildPrefixIndex();
+
+                // 数据加载成功：隐藏加载提示，启用查询按钮
+                dataLoadHint.classList.add('hidden');
+                searchBtn.disabled = false;
+                searchBtn.classList.remove('bg-gray-400');
+                searchBtn.classList.add('bg-primary', 'hover:bg-blue-600');
+
+            } catch (error) {
+                // 数据加载失败：显示错误提示，保持按钮禁用
+                console.error('加载地区数据失败：', error);
+                dataLoadHint.classList.add('hidden');
+                dataLoadError.classList.remove('hidden');
+                searchBtn.disabled = true;
+                searchBtn.classList.add('bg-gray-400');
+                searchBtn.classList.remove('bg-primary', 'hover:bg-blue-600');
+            }
+        }
+
+        /**
+         * 解析 shuju.txt 文本内容为 areaData 键值对
+         * @param {string} text - shuju.txt 中的文本内容
+         */
+        function parseAreaData(text) {
+            // 按换行符分割文本，处理不同系统的换行符（\n 或 \r\n）
+            const lineArray = text.split(/\r?\n/);
+            
+            lineArray.forEach(line => {
+                // 去除每行前后空白字符（避免空行、空格干扰）
+                const trimmedLine = line.trim();
+                if (trimmedLine) { // 跳过空行
+                    const [code, area] = trimmedLine.split('=');
+                    if (code && area) { // 确保分割后有有效数据
+                        areaData[code] = area;
+                    }
+                }
+            });
+        }
+
+        /**
+         * 构建4位前缀索引，用于快速查询前4位身份证对应的所有地区
+         */
+        function buildPrefixIndex() {
+            for (const code in areaData) {
+                if (code.length === 6) { // 确保是6位有效代码
+                    const prefix4 = code.substring(0, 4); // 提取前4位前缀
+
+                    // 初始化前缀索引数组
+                    if (!prefixIndex[prefix4]) {
+                        prefixIndex[prefix4] = [];
+                    }
+
+                    // 存入当前代码和对应地区
+                    prefixIndex[prefix4].push({
+                        code: code,
+                        area: areaData[code]
+                    });
+                }
+            }
+        }
+
+        // 输入验证：只允许输入数字，根据输入长度显示提示
+        idCardInput.addEventListener('input', function() {
+            // 只允许输入数字，过滤非数字字符
+            this.value = this.value.replace(/\D/g, '');
+            
+            // 根据输入长度显示不同提示
+            if (this.value.length === 0) {
+                inputHint.textContent = '支持输入前4位或前6位数字';
+                inputHint.className = 'mt-1 text-xs text-neutral';
+            } else if (this.value.length < 4) {
+                inputHint.textContent = '请至少输入4位数字';
+                inputHint.className = 'mt-1 text-xs text-warning';
+            } else if (this.value.length === 4) {
+                inputHint.textContent = '已输入4位，可以查询省份和城市';
+                inputHint.className = 'mt-1 text-xs text-success';
+            } else if (this.value.length > 4 && this.value.length < 6) {
+                inputHint.textContent = '还可以输入更多位数以获取更精确的结果';
+                inputHint.className = 'mt-1 text-xs text-neutral';
+            } else if (this.value.length === 6) {
+                inputHint.textContent = '已输入6位，可以查询到具体区县';
+                inputHint.className = 'mt-1 text-xs text-success';
+            }
+        });
+
+        // 表单提交处理
+        searchForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const input = idCardInput.value.trim();
+            
+            // 验证输入长度
+            if (input.length < 4 || input.length > 6) {
+                alert('请输入身份证号码的前4位或前6位数字');
+                return;
+            }
+            
+            // 验证数据是否已加载完成
+            if (Object.keys(areaData).length === 0) {
+                alert('地区数据尚未加载完成，请稍后重试');
+                return;
+            }
+            
+            // 显示结果区域和查询加载状态
+            resultArea.classList.remove('hidden');
+            loadingState.classList.remove('hidden');
+            noResultState.classList.add('hidden');
+            singleResult.classList.add('hidden');
+            multipleResults.classList.add('hidden');
+            
+            // 模拟API请求延迟，提升用户体验
+            setTimeout(() => {
+                loadingState.classList.add('hidden');
+                searchArea(input);
+            }, 800);
+        });
+
+        /**
+         * 根据输入的前缀查询地区信息
+         * @param {string} prefix - 身份证前4位或前6位数字
+         */
+        function searchArea(prefix) {
+            // 输入6位：查找精确匹配结果
+            if (prefix.length === 6) {
+                const area = areaData[prefix];
+                if (area) {
+                    // 显示单一精确结果
+                    resultPrefix.textContent = prefix;
+                    resultRegion.textContent = area;
+                    singleResult.classList.remove('hidden');
+                    multipleResults.classList.add('hidden');
+                    noResultState.classList.add('hidden');
+                } else {
+                    // 6位无精确匹配，尝试用前4位查询所有相关结果
+                    const prefix4 = prefix.substring(0, 4);
+                    const matches = prefixIndex[prefix4] || [];
+                    
+                    if (matches.length > 0) {
+                        renderResultsList(matches);
+                        multipleResults.classList.remove('hidden');
+                        singleResult.classList.add('hidden');
+                        noResultState.classList.add('hidden');
+                    } else {
+                        // 无任何匹配结果
+                        noResultState.classList.remove('hidden');
+                        singleResult.classList.add('hidden');
+                        multipleResults.classList.add('hidden');
+                    }
+                }
+            } 
+            // 输入4位：查找所有相关的6位地区结果
+            else if (prefix.length === 4) {
+                const matches = prefixIndex[prefix] || [];
+                
+                if (matches.length > 0) {
+                    renderResultsList(matches);
+                    multipleResults.classList.remove('hidden');
+                    singleResult.classList.add('hidden');
+                    noResultState.classList.add('hidden');
+                } else {
+                    // 4位无匹配，尝试补充00为6位查询
+                    const area = areaData[prefix + '00'];
+                    if (area) {
+                        resultPrefix.textContent = prefix + '00';
+                        resultRegion.textContent = area;
+                        singleResult.classList.remove('hidden');
+                        multipleResults.classList.add('hidden');
+                        noResultState.classList.add('hidden');
+                    } else {
+                        noResultState.classList.remove('hidden');
+                        singleResult.classList.add('hidden');
+                        multipleResults.classList.add('hidden');
+                    }
+                }
+            }
+        }
+
+        /**
+         * 渲染多个匹配结果的列表
+         * @param {Array} matches - 匹配的地区数组（包含code和area）
+         */
+        function renderResultsList(matches) {
+            resultsList.innerHTML = '';
+            
+            matches.forEach((match, index) => {
+                const resultItem = document.createElement('div');
+                resultItem.className = 'bg-white rounded-xl shadow-card p-5 result-card slide-in';
+                resultItem.style.animationDelay = `${index * 0.1}s`; // 逐行动画延迟
+                
+                resultItem.innerHTML = `
+                    <div class="flex items-start">
+                        <div class="bg-primary bg-opacity-10 rounded-full p-3 mr-4">
+                            <i class="fa fa-map-marker text-primary"></i>
+                        </div>
+                        <div class="flex-grow">
+                            <div class="flex justify-between items-center mb-2">
+                                <h4 class="font-semibold text-gray-800">${match.area}</h4>
+                                <span class="text-sm font-mono bg-gray-100 text-gray-600 px-2 py-1 rounded">${match.code}</span>
+                            </div>
+                            <button class="select-btn text-sm text-primary hover:text-blue-700 transition-colors duration-300 flex items-center" 
+                                    data-code="${match.code}" data-area="${match.area}">
+                                <i class="fa fa-check-circle mr-1"></i> 选择此结果
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                resultsList.appendChild(resultItem);
+            });
+            
+            // 为选择按钮添加点击事件
+            document.querySelectorAll('.select-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const code = this.getAttribute('data-code');
+                    const area = this.getAttribute('data-area');
+                    
+                    // 更新输入框内容并触发输入提示更新
+                    idCardInput.value = code;
+                    const inputEvent = new Event('input', { bubbles: true });
+                    idCardInput.dispatchEvent(inputEvent);
+                    
+                    // 切换到单一结果显示并滚动到结果区域
+                    resultPrefix.textContent = code;
+                    resultRegion.textContent = area;
+                    singleResult.classList.remove('hidden');
+                    multipleResults.classList.add('hidden');
+                    singleResult.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        }
+
+
+        // 锚点平滑滚动
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href');
+                const targetElement = document.querySelector(targetId);
+                
+                if (targetElement) {
+                    targetElement.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+
+        /**
+         * 显示图片弹窗
+         * @param {string} title - 弹窗标题
+         * @param {string} imageUrl - 图片URL
+         * @param {string} description - 图片描述
+         */
+        function showImageModal(title, imageUrl, description) {
+            const modal = document.getElementById('imageModal');
+            const modalContent = document.getElementById('modalContent');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalImage = document.getElementById('modalImage');
+            const modalDescription = document.getElementById('modalDescription');
+            
+            modalTitle.textContent = title;
+            modalImage.src = imageUrl;
+            modalImage.alt = title;
+            modalDescription.textContent = description;
+            
+            modal.classList.remove('hidden');
+            // 添加动画效果
+            setTimeout(() => {
+                modalContent.classList.remove('scale-95', 'opacity-0');
+                modalContent.classList.add('scale-100', 'opacity-100');
+            }, 10);
+        }
+        
+        /**
+         * 隐藏图片弹窗
+         */
+        function hideImageModal() {
+            const modal = document.getElementById('imageModal');
+            const modalContent = document.getElementById('modalContent');
+            
+            modalContent.classList.remove('scale-100', 'opacity-100');
+            modalContent.classList.add('scale-95', 'opacity-0');
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+        
+        /**
+         * 初始化社交媒体按钮事件
+         */
+        function initSocialButtons() {
+            const wechatBtn = document.getElementById('wechatBtn');
+            const qqBtn = document.getElementById('qqBtn');
+            const closeModal = document.getElementById('closeModal');
+            const modal = document.getElementById('imageModal');
+            
+            // 微信按钮点击事件
+            wechatBtn.addEventListener('click', function() {
+                showImageModal('管理员微信', 'image/wechat.png', '扫描二维码添加网站管理员');
+            });
+            
+            // QQ按钮点击事件
+            qqBtn.addEventListener('click', function() {
+                showImageModal('管理员QQ', 'image/qq.png', '扫描二维码添加网站管理员');
+            });
+            
+            // 关闭按钮点击事件
+            closeModal.addEventListener('click', hideImageModal);
+            
+            // 点击弹窗外部关闭
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    hideImageModal();
+                }
+            });
+            
+            // ESC键关闭弹窗
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+                    hideImageModal();
+                }
+            });
+        }
+
+        // 页面加载完成后，立即加载外部 shuju.txt 数据
+        window.addEventListener('load', function() {
+            loadAreaDataFromFile();
+            initSocialButtons();
+            document.body.classList.add('loaded');
+        });
+    </script>
+</body>
+</html>
